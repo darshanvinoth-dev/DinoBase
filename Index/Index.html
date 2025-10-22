@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DinoBase • Dinosaur Database</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #151923;
+      --muted: #9aa3b2;
+      --text: #e6e9ef;
+      --brand: #7cc28a;
+      --accent: #35b276;
+      --card: #161a24;
+      --card-border: #22283a;
+      --chip: #1e2432;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, #0e1014, #0b0d11 200px) fixed;
+      color: var(--text);
+    }
+
+    header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(15,17,21,0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1c2130;
+    }
+    .nav {
+      max-width: 1160px; margin: 0 auto; padding: 14px 16px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .logo {
+      display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .3px;
+    }
+    .logo-badge {
+      width: 28px; height: 28px; border-radius: 8px; background: radial-gradient(100% 100% at 30% 30%, #87e1a5, #2a7b57);
+      display: grid; place-items: center; color: #102118; font-weight: 900; box-shadow: 0 0 0 3px #12251b inset;
+    }
+    .logo span { color: var(--brand); }
+
+    .controls {
+      max-width: 1160px; margin: 14px auto 0; padding: 10px 16px 18px;
+      display: grid; grid-template-columns: 1fr 1fr 1fr auto auto; gap: 10px; align-items: end;
+    }
+    .field { display: grid; gap: 6px; }
+    label { font-size: 12px; color: var(--muted); }
+    select, input[type="text"] {
+      background: var(--panel); color: var(--text);
+      border: 1px solid #23293b; border-radius: 10px; padding: 10px 12px; outline: none;
+    }
+    select:focus, input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #1e3a2a; }
+    .btn {
+      background: var(--accent); border: none; color: #082716; font-weight: 700; padding: 10px 14px;
+      border-radius: 10px; cursor: pointer; transition: transform .04s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-ghost { background: var(--chip); color: var(--text); border: 1px solid #2a3248; }
+
+    .meta-bar { max-width: 1160px; margin: 0 auto; padding: 0 16px 12px; color: var(--muted); font-size: 13px; display:flex; gap:12px; align-items:center; }
+
+    main { max-width: 1160px; margin: 0 auto; padding: 8px 16px 90px; }
+
+    /* Grid: exactly 3 cards per row as requested */
+    .grid {
+      display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 10px 20px rgba(0,0,0,.25);
+      transition: transform .1s ease, box-shadow .1s ease, border-color .2s ease;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 16px 30px rgba(0,0,0,.3); border-color: #2d3750; }
+
+    .thumb { aspect-ratio: 16/10; width: 100%; background: #0f131c; display: grid; place-items: center; }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .card-body { padding: 12px 14px 14px; display: grid; gap: 6px; }
+    .genus { font-size: 18px; font-weight: 800; letter-spacing:.2px; }
+    .tags { display:flex; flex-wrap: wrap; gap:6px; }
+    .chip { font-size: 12px; color: #c9d1e6; background: var(--chip); border: 1px solid #2a3248; padding: 4px 8px; border-radius: 999px; }
+
+    .empty { color: var(--muted); text-align: center; padding: 36px 10px; }
+
+    .sentinel { height: 1px; }
+
+    .loading {
+      display: inline-flex; align-items: center; gap: 8px; color: var(--muted);
+    }
+    .spinner { width: 14px; height: 14px; border: 2px solid #2a3248; border-top-color: var(--accent); border-radius: 50%;
+      animation: spin .9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Helper when images fail */
+    .ph { font-size: 12px; color:#7d87a3; }
+
+    footer { max-width: 1160px; margin: 0 auto; padding: 24px 16px 60px; color: var(--muted); font-size: 12px; }
+
+    /* Optional: keep 3 columns even on narrow screens per the request */
+    @media (max-width: 980px) {
+      .controls { grid-template-columns: 1fr 1fr 1fr auto auto; }
+    }
+    @media (max-width: 780px) {
+      body { zoom: 0.9; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav">
+      <div class="logo" title="DinoBase">
+        <div class="logo-badge">D</div>
+        <div><span>Dino</span>Base</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="field">
+        <label for="family">Family</label>
+        <select id="family">
+          <option value="">All families</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="subfamily">Subfamily</label>
+        <select id="subfamily" disabled>
+          <option value="">All subfamilies</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="genusQuery">Genus</label>
+        <input id="genusQuery" type="text" placeholder="Type genus (e.g., Tyrannosaurus)" />
+      </div>
+      <button id="apply" class="btn" title="Apply filters">Search</button>
+      <button id="clear" class="btn btn-ghost" title="Clear filters">Clear</button>
+    </div>
+
+    <div class="meta-bar">
+      <div id="status" class="loading"><span class="spinner"></span> <span>Loading taxonomy…</span></div>
+      <div id="results" style="display:none"></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="grid" class="grid" aria-live="polite"></section>
+    <div id="sentinel" class="sentinel" aria-hidden="true"></div>
+    <p id="empty" class="empty" style="display:none">No dinosaurs match your filters.</p>
+  </main>
+
+  <footer>
+    <div>
+      Click any card to open the dinosaur’s Wikipedia page. Images are lazily loaded. Data is fetched from JSON chunks to reduce initial load.
+    </div>
+  </footer>
+
+  <script>
+  ;(() => {
+    // ======= CONFIG =======
+    // Adjust paths to your JSON files. See sample file structures at bottom of this HTML.
+    const CONFIG = {
+      // Mandatory taxonomy index (small): maps families/subfamilies/genus to chunk files
+      taxaUrl: 'data/taxa.json',
+      // Optional explicit chunk order for the infinite scroll "All" view
+      chunkList: [
+        'data/dinos/a.json','data/dinos/b.json','data/dinos/c.json','data/dinos/d.json','data/dinos/e.json',
+        'data/dinos/f.json','data/dinos/g.json','data/dinos/h.json','data/dinos/i.json','data/dinos/j.json',
+        'data/dinos/k.json','data/dinos/l.json','data/dinos/m.json','data/dinos/n.json','data/dinos/o.json',
+        'data/dinos/p.json','data/dinos/q.json','data/dinos/r.json','data/dinos/s.json','data/dinos/t.json',
+        'data/dinos/u.json','data/dinos/v.json','data/dinos/w.json','data/dinos/x.json','data/dinos/y.json','data/dinos/z.json'
+      ],
+      pageSize: 30,          // cards per batch
+      keepThreeColumns: true // keeps 3 cards per row even on small screens
+    }
+
+    // ======= STATE =======
+    const state = {
+      taxa: null, // { genus_to_chunk: {Genus: 'data/dinos/t.json'}, families: {Family: {subfamilies: {Subfamily: [Genus]}}} }
+      chunkCache: new Map(), // chunkUrl -> array of dinos
+      allModeQueue: [],
+      allModeIndex: 0,
+      mode: 'all', // 'all' | 'filtered'
+      filter: { family: '', subfamily: '', genus: '' },
+      renderedCount: 0,
+      currentItems: [] // items currently being shown (for filtered mode pagination if desired)
+    }
+
+    // ======= DOM =======
+    const $grid = document.getElementById('grid')
+    const $sentinel = document.getElementById('sentinel')
+    const $status = document.getElementById('status')
+    const $results = document.getElementById('results')
+    const $empty = document.getElementById('empty')
+
+    const $family = document.getElementById('family')
+    const $subfamily = document.getElementById('subfamily')
+    const $genusQuery = document.getElementById('genusQuery')
+    const $apply = document.getElementById('apply')
+    const $clear = document.getElementById('clear')
+
+    // ======= UTIL =======
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+    const titleCase = s => (s||'').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase())
+
+    const setStatus = (text, isLoading=false) => {
+      if (!text) { $status.style.display='none'; return }
+      $status.style.display = 'inline-flex'
+      $status.innerHTML = (isLoading ? '<span class="spinner"></span> ' : '') + `<span>${text}</span>`
+    }
+
+    const setResultsMeta = (count) => {
+      $results.style.display = 'inline'
+      $results.textContent = `${count.toLocaleString()} result${count===1?'':'s'}`
+    }
+
+    function sanitizeUrl(url) {
+      try { return new URL(url, location.href).toString() } catch { return '#' }
+    }
+
+    // Card factory
+    function cardHTML(item) {
+      const img = item.image ? `<img src="${sanitizeUrl(item.image)}" alt="${item.genus}" loading="lazy" decoding="async" />` : `<div class="ph">No image</div>`
+      const fam = item.family ? `<span class="chip" title="Family">${item.family}</span>` : ''
+      const subfam = item.subfamily ? `<span class="chip" title="Subfamily">${item.subfamily}</span>` : ''
+      const wiki = sanitizeUrl(item.wiki || '#')
+      return `
+        <article class="card" role="article">
+          <a href="${wiki}" target="_blank" rel="noopener" class="thumb" title="Open Wikipedia">
+            ${img}
+          </a>
+          <div class="card-body">
+            <div class="genus">${item.genus}</div>
+            <div class="tags">${fam} ${subfam}</div>
+          </div>
+        </article>
+      `
+    }
+
+    function render(items, append=true) {
+      if (!append) $grid.innerHTML = ''
+      const html = items.map(cardHTML).join('')
+      $grid.insertAdjacentHTML('beforeend', html)
+    }
+
+    // ======= DATA LOADING =======
+    async function fetchJSON(url) {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`)
+      return res.json()
+    }
+
+    async function loadChunk(url) {
+      if (state.chunkCache.has(url)) return state.chunkCache.get(url)
+      const data = await fetchJSON(url).catch(() => [])
+      state.chunkCache.set(url, Array.isArray(data) ? data : [])
+      return state.chunkCache.get(url)
+    }
+
+    async function loadTaxa() {
+      try {
+        const taxa = await fetchJSON(CONFIG.taxaUrl)
+        // Normalize keys to exact casing from file (assume already proper)
+        state.taxa = taxa || { genus_to_chunk: {}, families: {} }
+        setStatus('Ready')
+        await sleep(300)
+        setStatus('')
+      } catch (e) {
+        console.warn(e)
+        state.taxa = { genus_to_chunk: {}, families: {} }
+        setStatus('Taxonomy not found – browsing alphabetically', false)
+      }
+      populateFamilyOptions()
+    }
+
+    // ======= FILTER UI =======
+    function populateFamilyOptions() {
+      const families = Object.keys(state.taxa.families || {}).sort()
+      for (const fam of families) {
+        const opt = document.createElement('option')
+        opt.value = fam; opt.textContent = fam
+        $family.appendChild(opt)
+      }
+    }
+
+    function populateSubfamilyOptions(family) {
+      $subfamily.innerHTML = '<option value="">All subfamilies</option>'
+      $subfamily.disabled = !family
+      if (!family) return
+      const sub = state.taxa.families?.[family]?.subfamilies || {}
+      const names = Object.keys(sub).filter(s => s !== '_none').sort()
+      for (const name of names) {
+        const opt = document.createElement('option')
+        opt.value = name; opt.textContent = name
+        $subfamily.appendChild(opt)
+      }
+    }
+
+    // ======= MODES =======
+    function resetAllMode() {
+      state.mode = 'all'
+      state.allModeQueue = CONFIG.chunkList.slice()
+      state.allModeIndex = 0
+      state.renderedCount = 0
+      $grid.innerHTML = ''
+      $empty.style.display = 'none'
+      setResultsMeta(0)
+      loadNextAllBatch()
+    }
+
+    async function loadNextAllBatch() {
+      if (state.mode !== 'all') return
+      const target = state.allModeQueue[state.allModeIndex++] || null
+      if (!target) return
+      setStatus('Loading…', true)
+      const chunk = await loadChunk(target)
+      setStatus('')
+      if (chunk.length) {
+        const slice = chunk.slice(0, CONFIG.pageSize) // render first N from the chunk
+        render(slice, true)
+        state.renderedCount += slice.length
+        setResultsMeta(state.renderedCount)
+      }
+    }
+
+    async function applyFilter() {
+      state.mode = 'filtered'
+      state.renderedCount = 0
+      $grid.innerHTML = ''
+      $empty.style.display = 'none'
+
+      const fam = state.filter.family.trim()
+      const sub = state.filter.subfamily.trim()
+      const q = state.filter.genus.trim().toLowerCase()
+
+      // Build a target genus list using taxonomy for minimal fetches
+      let targetGenus = []
+      const taxa = state.taxa
+      if (fam) {
+        const subfamilies = taxa.families?.[fam]?.subfamilies || {}
+        if (sub) {
+          targetGenus = (subfamilies[sub] || []).slice()
+        } else {
+          // All subfamilies + _none bucket
+          for (const key of Object.keys(subfamilies)) {
+            targetGenus.push(...(subfamilies[key] || []))
+          }
+        }
+      } else {
+        // No family: consider all genera (from index) if available
+        targetGenus = Object.keys(taxa.genus_to_chunk || {})
+      }
+
+      // Apply genus text filter on names before fetching
+      if (q) targetGenus = targetGenus.filter(g => g.toLowerCase().includes(q))
+
+      // Deduplicate & map to chunks
+      const uniqGenus = Array.from(new Set(targetGenus))
+      const targetChunks = Array.from(new Set(uniqGenus.map(g => taxa.genus_to_chunk[g]).filter(Boolean)))
+
+      // If taxonomy index is missing (empty), we fall back to scanning alphabet chunks minimally
+      const chunkList = targetChunks.length ? targetChunks : CONFIG.chunkList
+
+      setStatus('Loading…', true)
+      let allItems = []
+      for (const url of chunkList) {
+        const arr = await loadChunk(url)
+        allItems.push(...arr)
+      }
+      setStatus('')
+
+      // In-memory filter on loaded records
+      let items = allItems
+      if (fam) items = items.filter(x => (x.family||'').toLowerCase() === fam.toLowerCase())
+      if (sub) items = items.filter(x => (x.subfamily||'').toLowerCase() === sub.toLowerCase())
+      if (q) items = items.filter(x => (x.genus||'').toLowerCase().includes(q))
+
+      // Sort by genus for consistency
+      items.sort((a,b) => (a.genus||'').localeCompare(b.genus||''))
+
+      if (!items.length) {
+        $grid.innerHTML = ''
+        $empty.style.display = 'block'
+        setResultsMeta(0)
+        return
+      }
+
+      // Render first page; could add pagination if needed
+      const first = items.slice(0, CONFIG.pageSize)
+      render(first, false)
+      state.renderedCount = first.length
+      state.currentItems = items
+      setResultsMeta(items.length)
+    }
+
+    // ======= EVENTS =======
+    $family.addEventListener('change', (e) => {
+      const v = e.target.value
+      state.filter.family = v
+      populateSubfamilyOptions(v)
+    })
+
+    $subfamily.addEventListener('change', (e) => {
+      state.filter.subfamily = e.target.value
+    })
+
+    let searchDebounce
+    $genusQuery.addEventListener('input', (e) => {
+      clearTimeout(searchDebounce)
+      searchDebounce = setTimeout(() => {
+        state.filter.genus = e.target.value
+      }, 200)
+    })
+
+    $apply.addEventListener('click', () => applyFilter())
+
+    $clear.addEventListener('click', () => {
+      $family.value = ''
+      $subfamily.value = ''
+      $subfamily.disabled = true
+      $genusQuery.value = ''
+      state.filter = { family: '', subfamily: '', genus: '' }
+      resetAllMode()
+    })
+
+    // Infinite scroll for ALL mode
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting && state.mode === 'all') {
+          loadNextAllBatch()
+        }
+      })
+    }, { root: null, rootMargin: '600px 0px 1200px 0px', threshold: 0 })
+    io.observe($sentinel)
+
+    // ======= INIT =======
+    ;(async function init(){
+      await loadTaxa()
+      resetAllMode()
+    })()
+
+  })()
+  </script>
+
+  <!--
+  ===================================
+  JSON FILE STRUCTURE (put under /data)
+  ===================================
+
+  1) data/taxa.json  (small index for precise, low-latency filtering)
+  --------------------------------------------------------------
+  {
+    "genus_to_chunk": {
+      "Tyrannosaurus": "data/dinos/t.json",
+      "Daspletosaurus": "data/dinos/d.json",
+      "Triceratops": "data/dinos/t.json"
+    },
+    "families": {
+      "Tyrannosauridae": {
+        "subfamilies": {
+          "Tyrannosaurinae": ["Tyrannosaurus", "Daspletosaurus"],
+          "_none": ["Alioramus"]
+        }
+      },
+      "Ceratopsidae": {
+        "subfamilies": {
+          "Chasmosaurinae": ["Triceratops"]
+        }
+      }
+    }
+  }
+
+  2) data/dinos/t.json  (alphabet chunk – repeat for a.json … z.json)
+  --------------------------------------------------------------
+  [
+    {
+      "genus": "Tyrannosaurus",
+      "family": "Tyrannosauridae",
+      "subfamily": "Tyrannosaurinae",
+      "image": "images/tyrannosaurus.jpg",
+      "wiki": "https://en.wikipedia.org/wiki/Tyrannosaurus"
+    },
+    {
+      "genus": "Triceratops",
+      "family": "Ceratopsidae",
+      "subfamily": "Chasmosaurinae",
+      "image": "images/triceratops.jpg",
+      "wiki": "https://en.wikipedia.org/wiki/Triceratops"
+    }
+  ]
+
+  • Place thumbnails under /images/ (or use full URLs). All <img> use loading="lazy".
+  • The site will fetch only the chunks it needs when you filter, keeping things fast.
+  • Clicking a card opens its Wikipedia page in a new tab.
+  -->
+</body>
+</html>
